@@ -98,7 +98,10 @@ impl Payroll {
             total += amounts.get(i).unwrap();
         }
         if total != expected_total_spend {
-            panic!("Expected spend mismatch: authorised {} but batch totals {}", expected_total_spend, total);
+            panic!(
+                "Expected spend mismatch: authorised {} but batch totals {}",
+                expected_total_spend, total
+            );
         }
 
         let addrs: ContractAddresses = e

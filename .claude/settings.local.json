@@ -10,7 +10,11 @@
       "Bash(cargo fmt --all)",
       "WebFetch(domain:www.drips.network)",
       "Bash(gh issue:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(gh run:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo audit:*)",
+      "Bash(cargo update:*)"
     ]
   }
 }
