@@ -1,10 +1,15 @@
 pragma circom 2.0.0;
 
-include "node_modules/circomlib/circuits/poseidon.circom";
 include "range_proof.circom";
 
 /*
- * ZK Payroll - Master Payment Circuit
+ * ZK Payroll – Payment Circuit (placeholder)
+ *
+ * Proves knowledge of (salary, blinding) such that:
+ *
+ *   salary_commitment = Poseidon(salary, blinding)
+ *   payment_nullifier = Poseidon(salary_commitment, nonce)
+ *   recipient_hash    = Poseidon(recipient_address)
  *
  * Public signals:
  *   - on_chain_commitment
@@ -24,9 +29,12 @@ include "range_proof.circom";
  */
 
 template PaymentProof() {
-    // Private inputs (witness)
-    signal input actual_salary;
-    signal input blinding_factor;
+    // ── Private inputs ────────────────────────────────────────────────────────
+    signal input salary;
+    signal input blinding;
+
+    component salary_range = SalaryRangeProof();
+    salary_range.salary <== salary;
 
     component salary_range = SalaryRangeProof();
     salary_range.salary <== actual_salary;
@@ -53,5 +61,5 @@ template PaymentProof() {
 }
 
 component main {
-    public [on_chain_commitment, expected_transfer_amount]
+    public [salary_commitment, payment_nullifier, recipient_hash]
 } = PaymentProof();
