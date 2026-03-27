@@ -1,66 +1,57 @@
 pragma circom 2.0.0;
 
+include "node_modules/circomlib/circuits/poseidon.circom";
 include "range_proof.circom";
 
 /*
- * ZK Payroll – Payment Circuit (placeholder)
+ * ZK Payroll - Master Payment Circuit
  *
- * Proves knowledge of (salary, blinding) such that:
+ * Public signals:
+ *   - on_chain_commitment
+ *   - expected_transfer_amount
  *
- *   salary_commitment = Poseidon(salary, blinding)
- *   payment_nullifier = Poseidon(salary_commitment, nonce)
- *   recipient_hash    = Poseidon(recipient_address)
+ * Private signals:
+ *   - actual_salary
+ *   - blinding_factor
  *
- * Public inputs:
- *   salary_commitment  – stored on-chain at onboarding time
- *   payment_nullifier  – unique per payment; prevents double-spending
- *   recipient_hash     – hash of the employee's wallet address
+ * Logical constraints:
+ *   1) actual_salary == expected_transfer_amount
+ *   2) calculated_hash = Poseidon(actual_salary, blinding_factor)
+ *   3) calculated_hash == on_chain_commitment
  *
- * Private inputs (known only to the prover):
- *   salary             – the employee's actual salary
- *   blinding           – a random blinding factor chosen at commitment time
- *   nonce              – payment-specific nonce (e.g. block number)
- *   recipient_address  – the employee's actual address
- *
- * NOTE: This is a PLACEHOLDER circuit.  The constraint system below uses
- * simple linear arithmetic instead of Poseidon because the circomlib
- * Poseidon template is not yet linked.  Replace the constraints below
- * with the real Poseidon template once `circomlib` is installed:
- *
- *   npm install circomlib
- *
- * and update the templates to:
- *   include "node_modules/circomlib/circuits/poseidon.circom";
- *
- * Compile with:
- *   circom payment.circom --r1cs --wasm --sym -o build/
- *
- * Then run the trusted setup:
- *   snarkjs groth16 setup build/payment.r1cs pot12_final.ptau payment_0000.zkey
- *   snarkjs zkey contribute payment_0000.zkey payment_final.zkey --name="1st Contributor"
- *   snarkjs zkey export verificationkey payment_final.zkey verification_key.json
+ * This circuit also includes SalaryRangeProof(actual_salary), tying range
+ * constraints to the same salary value used for commitment verification.
  */
 
 template PaymentProof() {
-    // ── Private inputs ────────────────────────────────────────────────────────
-    signal input salary;
-    signal input blinding;
+    // Private inputs (witness)
+    signal input actual_salary;
+    signal input blinding_factor;
 
     component salary_range = SalaryRangeProof();
-    salary_range.salary <== salary;
+    salary_range.salary <== actual_salary;
 
-    // ── Public outputs ────────────────────────────────────────────────────────
-    signal output salary_commitment;
-    signal output payment_nullifier;
-    signal output recipient_hash;
+    // Public signals (exposed on-chain)
+    signal output on_chain_commitment;
+    signal output expected_transfer_amount;
 
-    // ── Placeholder constraints (NOT cryptographically sound) ─────────────────
-    // Replace with real Poseidon constraints before production deployment.
-    salary_commitment <== salary + blinding * 7;
-    payment_nullifier <== salary_commitment * 13 + 1;
-    recipient_hash    <== blinding * 31 + 17;
+    // 1) Ensure actual salary equals expected transfer amount
+    expected_transfer_amount <== actual_salary;
+    actual_salary === expected_transfer_amount;
+
+    // 2) Calculate Poseidon(actual_salary, blinding_factor)
+    component salary_commitment_hash = Poseidon(2);
+    salary_commitment_hash.inputs[0] <== actual_salary;
+    salary_commitment_hash.inputs[1] <== blinding_factor;
+
+    signal calculated_hash;
+    calculated_hash <== salary_commitment_hash.out;
+
+    // 3) Ensure calculated hash equals the on-chain commitment
+    on_chain_commitment <== calculated_hash;
+    calculated_hash === on_chain_commitment;
 }
 
 component main {
-    public [salary_commitment, payment_nullifier, recipient_hash]
+    public [on_chain_commitment, expected_transfer_amount]
 } = PaymentProof();
